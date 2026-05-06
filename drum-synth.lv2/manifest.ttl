@@ -1,8 +1,32 @@
-@prefix lv2: <http://lv2plug.in/ns/lv2core#> .
+@prefix lv2:  <http://lv2plug.in/ns/lv2core#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 
-<https://example.org/plugins/drumsynth/kick> a lv2:Plugin ; lv2:binary <drumsynth.so> ; lv2:prototype <drumsynth.ttl> .
-<https://example.org/plugins/drumsynth/snare> a lv2:Plugin ; lv2:binary <drumsynth.so> ; lv2:prototype <drumsynth.ttl> .
-<https://example.org/plugins/drumsynth/hihat> a lv2:Plugin ; lv2:binary <drumsynth.so> ; lv2:prototype <drumsynth.ttl> .
-<https://example.org/plugins/drumsynth/tom> a lv2:Plugin ; lv2:binary <drumsynth.so> ; lv2:prototype <drumsynth.ttl> .
-<https://example.org/plugins/drumsynth/clap> a lv2:Plugin ; lv2:binary <drumsynth.so> ; lv2:prototype <drumsynth.ttl> .
-<https://example.org/plugins/drumsynth/sub808> a lv2:Plugin ; lv2:binary <drumsynth.so> ; lv2:prototype <drumsynth.ttl> .
+<https://example.org/plugins/drumsynth/kick>
+  a lv2:Plugin ;
+  lv2:binary <drumsynth.so> ;
+  rdfs:seeAlso <drumsynth.ttl> .
+
+<https://example.org/plugins/drumsynth/snare>
+  a lv2:Plugin ;
+  lv2:binary <drumsynth.so> ;
+  rdfs:seeAlso <drumsynth.ttl> .
+
+<https://example.org/plugins/drumsynth/hihat>
+  a lv2:Plugin ;
+  lv2:binary <drumsynth.so> ;
+  rdfs:seeAlso <drumsynth.ttl> .
+
+<https://example.org/plugins/drumsynth/tom>
+  a lv2:Plugin ;
+  lv2:binary <drumsynth.so> ;
+  rdfs:seeAlso <drumsynth.ttl> .
+
+<https://example.org/plugins/drumsynth/clap>
+  a lv2:Plugin ;
+  lv2:binary <drumsynth.so> ;
+  rdfs:seeAlso <drumsynth.ttl> .
+
+<https://example.org/plugins/drumsynth/sub808>
+  a lv2:Plugin ;
+  lv2:binary <drumsynth.so> ;
+  rdfs:seeAlso <drumsynth.ttl> .
