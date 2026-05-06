@@ -3,6 +3,8 @@
 #include <cstring>
 
 #include "lv2/core/lv2.h"
+#include "lv2/atom/atom.h"
+#include "lv2/atom/util.h"
 
 #define DRUM_URI "https://example.org/plugins/drumsynth"
 
@@ -24,6 +26,7 @@ enum PortIndex : uint32_t {
   PORT_CLAP_TONE,
   PORT_SUB_FREQ,
   PORT_SUB_DRIVE,
+  PORT_MIDI_IN,
 };
 
 struct Voice {
@@ -54,6 +57,7 @@ struct DrumSynth {
   const float* clap_tone = nullptr;
   const float* sub_freq = nullptr;
   const float* sub_drive = nullptr;
+  const LV2_Atom_Sequence* midi_in = nullptr;
 
   Voice kick;
   Voice snare;
@@ -192,12 +196,37 @@ static void connect_port(LV2_Handle instance, uint32_t port, void* data) {
     case PORT_CLAP_TONE: self->clap_tone = static_cast<const float*>(data); break;
     case PORT_SUB_FREQ: self->sub_freq = static_cast<const float*>(data); break;
     case PORT_SUB_DRIVE: self->sub_drive = static_cast<const float*>(data); break;
+    case PORT_MIDI_IN: self->midi_in = static_cast<const LV2_Atom_Sequence*>(data); break;
     default: break;
+  }
+}
+
+
+static void handle_midi(DrumSynth* self) {
+  if (!self->midi_in) return;
+  LV2_ATOM_SEQUENCE_FOREACH(self->midi_in, ev) {
+    const uint8_t* msg = reinterpret_cast<const uint8_t*>(ev + 1);
+    if (ev->body.size < 3) continue;
+    const uint8_t status = msg[0] & 0xF0;
+    const uint8_t note = msg[1];
+    const uint8_t vel = msg[2];
+    if (status == 0x90 && vel > 0) {
+      switch (note) {
+        case 36: trigger_voice(self->kick, 1.0f, 1.0f); break;
+        case 38: trigger_voice(self->snare, 1.0f, 1.0f); break;
+        case 42: trigger_voice(self->hihat, 1.0f, 0.9f); break;
+        case 45: trigger_voice(self->tom, 1.0f, 1.0f); break;
+        case 39: trigger_voice(self->clap, 1.0f, 1.0f); break;
+        case 48: trigger_voice(self->sub, 1.0f, 1.0f); break;
+      }
+    }
   }
 }
 
 static void run(LV2_Handle instance, uint32_t n_samples) {
   auto* self = static_cast<DrumSynth*>(instance);
+
+  handle_midi(self);
 
   const float gates[6] = {
       self->gate_kick ? self->gate_kick[0] : 0.0f,
