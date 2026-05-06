@@ -11,9 +11,14 @@ Esta rama contiene un **scaffold VST3** para generar un plugin **x86 (Win32)** q
    - **Desktop development with C++**
    - MSVC v143 toolset
    - Windows 10/11 SDK
+   - Descarga directa: https://visualstudio.microsoft.com/vs/community/
 3. **CMake 3.21+**.
-4. **Git**.
+   - Descarga directa: https://cmake.org/download/
+4. **Git for Windows**.
+   - Descarga directa: https://git-scm.com/download/win
 5. **Steinberg VST3 SDK** descargado localmente.
+   - Repositorio oficial (SDK): https://github.com/steinbergmedia/vst3sdk
+   - Licencia VST3: https://steinbergmedia.github.io/vst3_dev_portal/resources/VST3_License_Agreement.pdf
 
 ## 2) Preparar entorno
 
@@ -35,6 +40,11 @@ Asegúrate de que exista una ruta tipo:
 
 ```text
 C:\SDKs\vst3sdk\CMakeLists.txt
+```
+
+### 2.3 Descargar SDK por Git (opcional, recomendado)
+```powershell
+git clone https://github.com/steinbergmedia/vst3sdk C:/SDKs/vst3sdk
 ```
 
 ## 3) Compilar Win32 (x86)
