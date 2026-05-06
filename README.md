@@ -13,7 +13,7 @@
 - Resonance
 - Drive
 - Glide (especialmente útil en Sub/808)
-- Dist Type (Sub/808): 0=tanh, 1=hard clip, 2=fold-like
+- Dist Type (Sub/808): 0=tanh, 1=hard clip, 2=fold-like, 3=valvula, 4=tubos, 5=tape saturation
 - Dist Mix (Sub/808)
 - Gate + MIDI In
 

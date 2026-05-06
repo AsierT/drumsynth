@@ -95,16 +95,28 @@ static float filter(Plugin* p,float x){
 
 static float distort_sub808(Plugin* p, float x) {
   float mix = clamp(p->dist_mix ? *p->dist_mix : 0.0f, 0.0f, 1.0f);
-  float type = clamp(p->dist_type ? *p->dist_type : 0.0f, 0.0f, 2.999f);
+  float type = clamp(p->dist_type ? *p->dist_type : 0.0f, 0.0f, 5.999f);
   int t = static_cast<int>(type);
   float wet = x;
   if (t == 0) {
     wet = std::tanh(x * 3.2f);
   } else if (t == 1) {
     wet = clip(x * 6.0f);
-  } else {
+  } else if (t == 2) {
     float k = 20.0f;
     wet = ((1.0f + k) * x) / (1.0f + k * std::fabs(x));
+  } else if (t == 3) {
+    // valve-style asymmetric saturation
+    float a = x + 0.2f * x * x;
+    wet = std::tanh(a * 2.8f);
+  } else if (t == 4) {
+    // tube-style smoother odd/even harmonics
+    float a = x * (1.0f + 0.5f * std::fabs(x));
+    wet = std::tanh(a * 2.2f) + 0.08f * std::sin(3.0f * a);
+  } else {
+    // tape saturation approximation with soft knee + mild compression
+    float a = std::tanh(x * 1.8f);
+    wet = a * (1.0f - 0.15f * std::fabs(a));
   }
   return x * (1.0f - mix) + wet * mix;
 }
