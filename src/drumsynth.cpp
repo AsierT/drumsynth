@@ -143,6 +143,9 @@ static void connect_port(LV2_Handle instance,uint32_t port,void* data){
 
 static void run(LV2_Handle instance,uint32_t n){
   auto* p=(Plugin*)instance;
+  if (!p || !p->out_l || !p->out_r) {
+    return;
+  }
   handle_midi(p);
   float g = p->gate?*p->gate:0.0f;
   if(g>0.5f && p->prev_gate<=0.5f) trigger(p);
@@ -180,6 +183,7 @@ static const LV2_Descriptor descriptors[] = {
   {URIS[5],instantiate,connect_port,nullptr,run,nullptr,cleanup,nullptr},
 };
 
-LV2_SYMBOL_EXPORT const LV2_Descriptor* lv2_descriptor(uint32_t index){
+extern "C" LV2_SYMBOL_EXPORT
+const LV2_Descriptor* lv2_descriptor(uint32_t index) {
   return index < 6 ? &descriptors[index] : nullptr;
 }
