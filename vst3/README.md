@@ -23,10 +23,24 @@ Esta rama contiene un **scaffold VST3** para generar un plugin **x86 (Win32)** q
 ## 2) Preparar entorno
 
 ### 2.1 Clonar el repo y cambiar a la rama VST3
+Usa **la URL del repositorio**, no la URL con `/tree/...` del navegador.
+
+✅ Correcto:
 ```powershell
-git clone <URL_DE_TU_REPO> drumsynth
+git clone https://github.com/AsierT/drumsynth.git drumsynth
 cd drumsynth
-git checkout vst3-windows-x86
+git checkout codex/create-drum-synthesizer-lv2-plugin-5cz3i9
+```
+
+❌ Incorrecto (esto falla):
+```text
+https://github.com/AsierT/drumsynth/tree/codex/create-drum-synthesizer-lv2-plugin-5cz3i9
+```
+
+Si la rama no existe en remoto todavía, primero trae refs y revisa ramas:
+```powershell
+git fetch --all --prune
+git branch -r
 ```
 
 ### 2.2 Obtener VST3 SDK
