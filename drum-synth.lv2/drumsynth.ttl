@@ -3,22 +3,29 @@
 @prefix lv2:  <http://lv2plug.in/ns/lv2core#> .
 @prefix midi: <http://lv2plug.in/ns/ext/midi#> .
 
-<https://example.org/plugins/drumsynth>
-  a lv2:Plugin ;
-  doap:name "DrumSynth ARM64" ;
-  lv2:port [ a lv2:AudioPort , lv2:OutputPort ; lv2:index 0 ; lv2:symbol "out_l" ; lv2:name "Out L" ] ,
-           [ a lv2:AudioPort , lv2:OutputPort ; lv2:index 1 ; lv2:symbol "out_r" ; lv2:name "Out R" ] ,
-           [ a lv2:ControlPort , lv2:InputPort ; lv2:index 2 ; lv2:symbol "gate_kick" ; lv2:name "Kick Trigger" ; lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
-           [ a lv2:ControlPort , lv2:InputPort ; lv2:index 3 ; lv2:symbol "gate_snare" ; lv2:name "Snare Trigger" ; lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
-           [ a lv2:ControlPort , lv2:InputPort ; lv2:index 4 ; lv2:symbol "gate_hihat" ; lv2:name "HiHat Trigger" ; lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
-           [ a lv2:ControlPort , lv2:InputPort ; lv2:index 5 ; lv2:symbol "gate_tom" ; lv2:name "Tom Trigger" ; lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
-           [ a lv2:ControlPort , lv2:InputPort ; lv2:index 6 ; lv2:symbol "gate_clap" ; lv2:name "Clap Trigger" ; lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
-           [ a lv2:ControlPort , lv2:InputPort ; lv2:index 7 ; lv2:symbol "gate_sub" ; lv2:name "Sub/808 Trigger" ; lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
-           [ a lv2:ControlPort , lv2:InputPort ; lv2:index 8 ; lv2:symbol "kick_tune" ; lv2:name "Kick Tune" ; lv2:default 0.5 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
-           [ a lv2:ControlPort , lv2:InputPort ; lv2:index 9 ; lv2:symbol "snare_tone" ; lv2:name "Snare Tone" ; lv2:default 0.5 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
-           [ a lv2:ControlPort , lv2:InputPort ; lv2:index 10 ; lv2:symbol "hihat_tone" ; lv2:name "HiHat Tone" ; lv2:default 0.5 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
-           [ a lv2:ControlPort , lv2:InputPort ; lv2:index 11 ; lv2:symbol "tom_tune" ; lv2:name "Tom Tune" ; lv2:default 0.5 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
-           [ a lv2:ControlPort , lv2:InputPort ; lv2:index 12 ; lv2:symbol "clap_tone" ; lv2:name "Clap Tone" ; lv2:default 0.5 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
-           [ a lv2:ControlPort , lv2:InputPort ; lv2:index 13 ; lv2:symbol "sub_freq" ; lv2:name "Sub/808 Freq" ; lv2:default 0.4 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
-           [ a lv2:ControlPort , lv2:InputPort ; lv2:index 14 ; lv2:symbol "sub_drive" ; lv2:name "Sub/808 Drive" ; lv2:default 0.2 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
-           [ a atom:AtomPort , lv2:InputPort ; lv2:index 15 ; lv2:symbol "midi_in" ; lv2:name "MIDI In" ; atom:bufferType atom:Sequence ; atom:supports midi:MidiEvent ] .
+<https://example.org/plugins/drumsynth/kick> a lv2:Plugin ; doap:name "DrumSynth Kick" .
+<https://example.org/plugins/drumsynth/snare> a lv2:Plugin ; doap:name "DrumSynth Snare" .
+<https://example.org/plugins/drumsynth/hihat> a lv2:Plugin ; doap:name "DrumSynth HiHat" .
+<https://example.org/plugins/drumsynth/tom> a lv2:Plugin ; doap:name "DrumSynth Tom" .
+<https://example.org/plugins/drumsynth/clap> a lv2:Plugin ; doap:name "DrumSynth Clap" .
+<https://example.org/plugins/drumsynth/sub808> a lv2:Plugin ; doap:name "DrumSynth Sub808" .
+
+<https://example.org/plugins/drumsynth/kick>
+  lv2:port [ a lv2:AudioPort, lv2:OutputPort ; lv2:index 0 ; lv2:symbol "out_l" ; lv2:name "Out L" ] ,
+           [ a lv2:AudioPort, lv2:OutputPort ; lv2:index 1 ; lv2:symbol "out_r" ; lv2:name "Out R" ] ,
+           [ a lv2:ControlPort, lv2:InputPort ; lv2:index 2 ; lv2:symbol "gate" ; lv2:name "Gate" ; lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
+           [ a lv2:ControlPort, lv2:InputPort ; lv2:index 3 ; lv2:symbol "tone" ; lv2:name "Tone" ; lv2:default 0.5 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
+           [ a lv2:ControlPort, lv2:InputPort ; lv2:index 4 ; lv2:symbol "pitch" ; lv2:name "Pitch" ; lv2:default 0.5 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
+           [ a lv2:ControlPort, lv2:InputPort ; lv2:index 5 ; lv2:symbol "amp_decay" ; lv2:name "Amp Decay" ; lv2:default 0.5 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
+           [ a lv2:ControlPort, lv2:InputPort ; lv2:index 6 ; lv2:symbol "amp_release" ; lv2:name "Amp Release" ; lv2:default 0.5 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
+           [ a lv2:ControlPort, lv2:InputPort ; lv2:index 7 ; lv2:symbol "filt_decay" ; lv2:name "Filter Decay" ; lv2:default 0.5 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
+           [ a lv2:ControlPort, lv2:InputPort ; lv2:index 8 ; lv2:symbol "filt_release" ; lv2:name "Filter Release" ; lv2:default 0.5 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
+           [ a lv2:ControlPort, lv2:InputPort ; lv2:index 9 ; lv2:symbol "resonance" ; lv2:name "Resonance" ; lv2:default 0.1 ; lv2:minimum 0 ; lv2:maximum 0.98 ] ,
+           [ a lv2:ControlPort, lv2:InputPort ; lv2:index 10 ; lv2:symbol "drive" ; lv2:name "Drive" ; lv2:default 0.2 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
+           [ a atom:AtomPort, lv2:InputPort ; lv2:index 11 ; lv2:symbol "midi_in" ; lv2:name "MIDI In" ; atom:bufferType atom:Sequence ; atom:supports midi:MidiEvent ] .
+
+<https://example.org/plugins/drumsynth/snare> lv2:port <https://example.org/plugins/drumsynth/kick> .
+<https://example.org/plugins/drumsynth/hihat> lv2:port <https://example.org/plugins/drumsynth/kick> .
+<https://example.org/plugins/drumsynth/tom> lv2:port <https://example.org/plugins/drumsynth/kick> .
+<https://example.org/plugins/drumsynth/clap> lv2:port <https://example.org/plugins/drumsynth/kick> .
+<https://example.org/plugins/drumsynth/sub808> lv2:port <https://example.org/plugins/drumsynth/kick> .

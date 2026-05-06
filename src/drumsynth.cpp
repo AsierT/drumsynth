@@ -6,275 +6,141 @@
 #include "lv2/atom/atom.h"
 #include "lv2/atom/util.h"
 
-#define DRUM_URI "https://example.org/plugins/drumsynth"
+enum VoiceType { KICK, SNARE, HIHAT, TOM, CLAP, SUB808 };
 
-static constexpr uint32_t SAMPLE_RATE_MIN = 1;
+static const char* URIS[] = {
+    "https://example.org/plugins/drumsynth/kick",
+    "https://example.org/plugins/drumsynth/snare",
+    "https://example.org/plugins/drumsynth/hihat",
+    "https://example.org/plugins/drumsynth/tom",
+    "https://example.org/plugins/drumsynth/clap",
+    "https://example.org/plugins/drumsynth/sub808",
+};
 
 enum PortIndex : uint32_t {
-  PORT_OUT_L = 0,
-  PORT_OUT_R,
-  PORT_GATE_KICK,
-  PORT_GATE_SNARE,
-  PORT_GATE_HIHAT,
-  PORT_GATE_TOM,
-  PORT_GATE_CLAP,
-  PORT_GATE_SUB,
-  PORT_KICK_TUNE,
-  PORT_SNARE_TONE,
-  PORT_HIHAT_TONE,
-  PORT_TOM_TUNE,
-  PORT_CLAP_TONE,
-  PORT_SUB_FREQ,
-  PORT_SUB_DRIVE,
-  PORT_MIDI_IN,
+  OUT_L = 0, OUT_R, GATE, TONE, PITCH, AMP_DECAY, AMP_RELEASE,
+  FILT_DECAY, FILT_RELEASE, RESONANCE, DRIVE, MIDI_IN
 };
 
-struct Voice {
-  bool active = false;
+struct Plugin {
+  VoiceType type;
+  float sr;
   float phase = 0.0f;
-  float env = 0.0f;
-  float pitch = 0.0f;
-  uint32_t noise = 0x12345678u;
+  float amp_env = 0.0f;
+  float filt_env = 0.0f;
+  float filt_state = 0.0f;
+  float prev_gate = 0.0f;
+  uint32_t noise = 0x1234ABCD;
+
+  float *out_l=nullptr,*out_r=nullptr;
+  const float *gate=nullptr,*tone=nullptr,*pitch=nullptr,*amp_decay=nullptr,*amp_release=nullptr;
+  const float *filt_decay=nullptr,*filt_release=nullptr,*resonance=nullptr,*drive=nullptr;
+  const LV2_Atom_Sequence* midi_in=nullptr;
 };
 
-struct DrumSynth {
-  float sample_rate = 48000.0f;
+static float frand(Plugin* p){ p->noise = p->noise*1664525u + 1013904223u; return ((p->noise>>8)&0xFFFF)/32768.0f-1.0f; }
+static float clip(float x){ return x/(1.0f+std::fabs(x)); }
+static float clamp(float x,float lo,float hi){ return x<lo?lo:(x>hi?hi:x); }
 
-  float* out_l = nullptr;
-  float* out_r = nullptr;
+static void trigger(Plugin* p, float vel=1.0f){ p->amp_env = vel; p->filt_env = vel; }
 
-  const float* gate_kick = nullptr;
-  const float* gate_snare = nullptr;
-  const float* gate_hihat = nullptr;
-  const float* gate_tom = nullptr;
-  const float* gate_clap = nullptr;
-  const float* gate_sub = nullptr;
-
-  const float* kick_tune = nullptr;
-  const float* snare_tone = nullptr;
-  const float* hihat_tone = nullptr;
-  const float* tom_tune = nullptr;
-  const float* clap_tone = nullptr;
-  const float* sub_freq = nullptr;
-  const float* sub_drive = nullptr;
-  const LV2_Atom_Sequence* midi_in = nullptr;
-
-  Voice kick;
-  Voice snare;
-  Voice hihat;
-  Voice tom;
-  Voice clap;
-  Voice sub;
-
-  float prev_gate[6] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-};
-
-static inline float fast_rand(Voice& voice) {
-  voice.noise = voice.noise * 1664525u + 1013904223u;
-  return (static_cast<float>(voice.noise & 0x00FFFFFFu) / 8388608.0f) - 1.0f;
-}
-
-static inline float clamp01(float x) {
-  if (x < 0.0f) return 0.0f;
-  if (x > 1.0f) return 1.0f;
-  return x;
-}
-
-static void trigger_voice(Voice& voice, float pitch, float env) {
-  voice.active = true;
-  voice.phase = 0.0f;
-  voice.pitch = pitch;
-  voice.env = env;
-}
-
-static float render_kick(DrumSynth* self) {
-  auto& v = self->kick;
-  if (!v.active) return 0.0f;
-  const float decay = 0.9992f;
-  const float sweep = 40.0f * v.env;
-  const float freq = 35.0f + self->kick_tune[0] * 90.0f + sweep;
-  v.phase += (2.0f * static_cast<float>(M_PI) * freq) / self->sample_rate;
-  const float body = std::sin(v.phase);
-  const float click = (v.env > 0.8f) ? (v.env - 0.8f) * 2.5f : 0.0f;
-  float out = (body + click) * v.env;
-  v.env *= decay;
-  if (v.env < 0.0003f) v.active = false;
-  return out * 1.2f;
-}
-
-static float render_snare(DrumSynth* self) {
-  auto& v = self->snare;
-  if (!v.active) return 0.0f;
-  const float tone = 120.0f + self->snare_tone[0] * 260.0f;
-  v.phase += (2.0f * static_cast<float>(M_PI) * tone) / self->sample_rate;
-  const float shell = std::sin(v.phase) * 0.35f;
-  const float noise = fast_rand(v) * 0.85f;
-  const float out = (shell + noise) * v.env;
-  v.env *= 0.995f;
-  if (v.env < 0.0003f) v.active = false;
-  return out;
-}
-
-static float render_hihat(DrumSynth* self) {
-  auto& v = self->hihat;
-  if (!v.active) return 0.0f;
-  const float tone = 2500.0f + self->hihat_tone[0] * 7500.0f;
-  v.phase += tone / self->sample_rate;
-  if (v.phase >= 1.0f) v.phase -= 1.0f;
-  const float metallic = (v.phase < 0.5f ? 1.0f : -1.0f) * 0.35f;
-  const float noise = fast_rand(v) * 0.9f;
-  const float out = (noise + metallic) * v.env;
-  v.env *= 0.988f;
-  if (v.env < 0.0003f) v.active = false;
-  return out;
-}
-
-static float render_tom(DrumSynth* self) {
-  auto& v = self->tom;
-  if (!v.active) return 0.0f;
-  const float freq = 70.0f + self->tom_tune[0] * 220.0f + v.env * 18.0f;
-  v.phase += (2.0f * static_cast<float>(M_PI) * freq) / self->sample_rate;
-  const float out = std::sin(v.phase) * v.env;
-  v.env *= 0.997f;
-  if (v.env < 0.0003f) v.active = false;
-  return out * 1.1f;
-}
-
-static float render_clap(DrumSynth* self) {
-  auto& v = self->clap;
-  if (!v.active) return 0.0f;
-  const float tone = 0.2f + self->clap_tone[0] * 0.6f;
-  const float burst = (std::fmod(v.phase, tone) < 0.03f) ? 1.0f : 0.25f;
-  const float out = fast_rand(v) * burst * v.env;
-  v.phase += 1.0f / self->sample_rate;
-  v.env *= 0.992f;
-  if (v.env < 0.0003f) v.active = false;
-  return out;
-}
-
-static float soft_clip(float x) {
-  return x / (1.0f + std::fabs(x));
-}
-
-static float render_sub(DrumSynth* self) {
-  auto& v = self->sub;
-  if (!v.active) return 0.0f;
-  const float base = 25.0f + self->sub_freq[0] * 85.0f;
-  v.phase += (2.0f * static_cast<float>(M_PI) * base) / self->sample_rate;
-  const float raw = std::sin(v.phase) * v.env;
-  const float drive = 1.0f + (self->sub_drive[0] * 9.0f);
-  const float out = soft_clip(raw * drive);
-  v.env *= 0.9994f;
-  if (v.env < 0.0003f) v.active = false;
-  return out * 1.4f;
-}
-
-static LV2_Handle instantiate(const LV2_Descriptor*, double rate, const char*, const LV2_Feature* const*) {
-  if (rate < SAMPLE_RATE_MIN) {
-    return nullptr;
-  }
-  auto* self = new DrumSynth();
-  self->sample_rate = static_cast<float>(rate);
-  return self;
-}
-
-static void connect_port(LV2_Handle instance, uint32_t port, void* data) {
-  auto* self = static_cast<DrumSynth*>(instance);
-  switch (port) {
-    case PORT_OUT_L: self->out_l = static_cast<float*>(data); break;
-    case PORT_OUT_R: self->out_r = static_cast<float*>(data); break;
-    case PORT_GATE_KICK: self->gate_kick = static_cast<const float*>(data); break;
-    case PORT_GATE_SNARE: self->gate_snare = static_cast<const float*>(data); break;
-    case PORT_GATE_HIHAT: self->gate_hihat = static_cast<const float*>(data); break;
-    case PORT_GATE_TOM: self->gate_tom = static_cast<const float*>(data); break;
-    case PORT_GATE_CLAP: self->gate_clap = static_cast<const float*>(data); break;
-    case PORT_GATE_SUB: self->gate_sub = static_cast<const float*>(data); break;
-    case PORT_KICK_TUNE: self->kick_tune = static_cast<const float*>(data); break;
-    case PORT_SNARE_TONE: self->snare_tone = static_cast<const float*>(data); break;
-    case PORT_HIHAT_TONE: self->hihat_tone = static_cast<const float*>(data); break;
-    case PORT_TOM_TUNE: self->tom_tune = static_cast<const float*>(data); break;
-    case PORT_CLAP_TONE: self->clap_tone = static_cast<const float*>(data); break;
-    case PORT_SUB_FREQ: self->sub_freq = static_cast<const float*>(data); break;
-    case PORT_SUB_DRIVE: self->sub_drive = static_cast<const float*>(data); break;
-    case PORT_MIDI_IN: self->midi_in = static_cast<const LV2_Atom_Sequence*>(data); break;
-    default: break;
-  }
-}
-
-
-static void handle_midi(DrumSynth* self) {
-  if (!self->midi_in) return;
-  LV2_ATOM_SEQUENCE_FOREACH(self->midi_in, ev) {
-    const uint8_t* msg = reinterpret_cast<const uint8_t*>(ev + 1);
-    if (ev->body.size < 3) continue;
-    const uint8_t status = msg[0] & 0xF0;
-    const uint8_t note = msg[1];
-    const uint8_t vel = msg[2];
-    if (status == 0x90 && vel > 0) {
-      switch (note) {
-        case 36: trigger_voice(self->kick, 1.0f, 1.0f); break;
-        case 38: trigger_voice(self->snare, 1.0f, 1.0f); break;
-        case 42: trigger_voice(self->hihat, 1.0f, 0.9f); break;
-        case 45: trigger_voice(self->tom, 1.0f, 1.0f); break;
-        case 39: trigger_voice(self->clap, 1.0f, 1.0f); break;
-        case 48: trigger_voice(self->sub, 1.0f, 1.0f); break;
-      }
+static void handle_midi(Plugin* p){
+  if(!p->midi_in) return;
+  LV2_ATOM_SEQUENCE_FOREACH(p->midi_in, ev){
+    const uint8_t* m = reinterpret_cast<const uint8_t*>(ev + 1);
+    if(ev->body.size < 3) continue;
+    if((m[0]&0xF0)==0x90 && m[2]>0){
+      trigger(p, m[2]/127.0f);
     }
   }
 }
 
-static void run(LV2_Handle instance, uint32_t n_samples) {
-  auto* self = static_cast<DrumSynth*>(instance);
+static float osc(Plugin* p){
+  float t= p->tone?*p->tone:0.5f, pi = p->pitch?*p->pitch:0.5f;
+  float f0=40.0f+pi*120.0f;
+  if(p->type==HIHAT) f0 = 3000.0f + t*7000.0f;
+  if(p->type==SNARE) f0 = 150.0f + t*250.0f;
+  if(p->type==CLAP) f0 = 900.0f + t*2500.0f;
+  if(p->type==SUB808) f0 = 28.0f + pi*70.0f;
+  p->phase += (2.0f*float(M_PI)*f0)/p->sr;
 
-  handle_midi(self);
+  switch(p->type){
+    case KICK: return std::sin(p->phase + 20.0f*p->amp_env);
+    case SNARE: return 0.35f*std::sin(p->phase)+0.8f*frand(p);
+    case HIHAT: return (std::sin(p->phase*1.37f)>0?1.0f:-1.0f)*0.3f + frand(p)*0.9f;
+    case TOM: return std::sin(p->phase);
+    case CLAP: return ((std::fmod(p->phase,0.9f)<0.2f)?1.0f:0.2f)*frand(p);
+    case SUB808: return std::sin(p->phase);
+  }
+  return 0.0f;
+}
 
-  const float gates[6] = {
-      self->gate_kick ? self->gate_kick[0] : 0.0f,
-      self->gate_snare ? self->gate_snare[0] : 0.0f,
-      self->gate_hihat ? self->gate_hihat[0] : 0.0f,
-      self->gate_tom ? self->gate_tom[0] : 0.0f,
-      self->gate_clap ? self->gate_clap[0] : 0.0f,
-      self->gate_sub ? self->gate_sub[0] : 0.0f,
-  };
+static float filter(Plugin* p,float x){
+  float t=p->tone?*p->tone:0.5f;
+  float cutoff = 80.0f + t*9000.0f + p->filt_env*4000.0f;
+  cutoff = clamp(cutoff, 40.0f, p->sr*0.45f);
+  float a = 1.0f - std::exp(-2.0f*float(M_PI)*cutoff/p->sr);
+  float res = clamp(p->resonance?*p->resonance:0.1f,0.0f,0.98f);
+  float in = x - res*p->filt_state;
+  p->filt_state += a*(in - p->filt_state);
+  return p->filt_state;
+}
 
-  if (gates[0] > 0.5f && self->prev_gate[0] <= 0.5f) trigger_voice(self->kick, 1.0f, 1.0f);
-  if (gates[1] > 0.5f && self->prev_gate[1] <= 0.5f) trigger_voice(self->snare, 1.0f, 1.0f);
-  if (gates[2] > 0.5f && self->prev_gate[2] <= 0.5f) trigger_voice(self->hihat, 1.0f, 0.9f);
-  if (gates[3] > 0.5f && self->prev_gate[3] <= 0.5f) trigger_voice(self->tom, 1.0f, 1.0f);
-  if (gates[4] > 0.5f && self->prev_gate[4] <= 0.5f) trigger_voice(self->clap, 1.0f, 1.0f);
-  if (gates[5] > 0.5f && self->prev_gate[5] <= 0.5f) trigger_voice(self->sub, 1.0f, 1.0f);
+static LV2_Handle instantiate(const LV2_Descriptor* d,double rate,const char*,const LV2_Feature* const*){
+  auto* p = new Plugin();
+  p->sr = float(rate);
+  for(int i=0;i<6;i++) if(std::strcmp(d->URI,URIS[i])==0) p->type = VoiceType(i);
+  return p;
+}
 
-  std::memcpy(self->prev_gate, gates, sizeof(gates));
-
-  for (uint32_t i = 0; i < n_samples; ++i) {
-    float mix = 0.0f;
-    mix += render_kick(self);
-    mix += render_snare(self);
-    mix += render_hihat(self);
-    mix += render_tom(self);
-    mix += render_clap(self);
-    mix += render_sub(self);
-    mix *= 0.25f;
-    if (self->out_l) self->out_l[i] = mix;
-    if (self->out_r) self->out_r[i] = mix;
+static void connect_port(LV2_Handle instance,uint32_t port,void* data){
+  auto* p=(Plugin*)instance;
+  switch(port){
+    case OUT_L:p->out_l=(float*)data;break; case OUT_R:p->out_r=(float*)data;break;
+    case GATE:p->gate=(const float*)data;break; case TONE:p->tone=(const float*)data;break;
+    case PITCH:p->pitch=(const float*)data;break; case AMP_DECAY:p->amp_decay=(const float*)data;break;
+    case AMP_RELEASE:p->amp_release=(const float*)data;break; case FILT_DECAY:p->filt_decay=(const float*)data;break;
+    case FILT_RELEASE:p->filt_release=(const float*)data;break; case RESONANCE:p->resonance=(const float*)data;break;
+    case DRIVE:p->drive=(const float*)data;break; case MIDI_IN:p->midi_in=(const LV2_Atom_Sequence*)data;break;
   }
 }
 
-static void cleanup(LV2_Handle instance) {
-  delete static_cast<DrumSynth*>(instance);
+static void run(LV2_Handle instance,uint32_t n){
+  auto* p=(Plugin*)instance;
+  handle_midi(p);
+  float g = p->gate?*p->gate:0.0f;
+  if(g>0.5f && p->prev_gate<=0.5f) trigger(p);
+  p->prev_gate = g;
+
+  float ad=0.990f + (p->amp_decay?*p->amp_decay:0.5f)*0.0099f;
+  float ar=0.990f + (p->amp_release?*p->amp_release:0.5f)*0.0099f;
+  float fd=0.985f + (p->filt_decay?*p->filt_decay:0.5f)*0.014f;
+  float fr=0.985f + (p->filt_release?*p->filt_release:0.5f)*0.014f;
+  float drv=1.0f + (p->drive?*p->drive:0.2f)*8.0f;
+
+  for(uint32_t i=0;i<n;i++){
+    float raw=osc(p);
+    float shaped=filter(p,raw);
+    float y=clip(shaped*drv)*p->amp_env;
+    p->amp_env*= (p->amp_env>0.2f)?ad:ar;
+    p->filt_env*= (p->filt_env>0.2f)?fd:fr;
+    if(p->amp_env<0.0001f) p->amp_env=0.0f;
+    if(p->filt_env<0.0001f) p->filt_env=0.0f;
+    p->out_l[i]=y; p->out_r[i]=y;
+  }
 }
 
-static const LV2_Descriptor descriptor = {
-    DRUM_URI,
-    instantiate,
-    connect_port,
-    nullptr,
-    run,
-    nullptr,
-    cleanup,
-    nullptr,
+static void cleanup(LV2_Handle i){ delete (Plugin*)i; }
+
+static const LV2_Descriptor descriptors[] = {
+  {URIS[0],instantiate,connect_port,nullptr,run,nullptr,cleanup,nullptr},
+  {URIS[1],instantiate,connect_port,nullptr,run,nullptr,cleanup,nullptr},
+  {URIS[2],instantiate,connect_port,nullptr,run,nullptr,cleanup,nullptr},
+  {URIS[3],instantiate,connect_port,nullptr,run,nullptr,cleanup,nullptr},
+  {URIS[4],instantiate,connect_port,nullptr,run,nullptr,cleanup,nullptr},
+  {URIS[5],instantiate,connect_port,nullptr,run,nullptr,cleanup,nullptr},
 };
 
-LV2_SYMBOL_EXPORT const LV2_Descriptor* lv2_descriptor(uint32_t index) {
-  return (index == 0) ? &descriptor : nullptr;
+LV2_SYMBOL_EXPORT const LV2_Descriptor* lv2_descriptor(uint32_t index){
+  return index < 6 ? &descriptors[index] : nullptr;
 }
