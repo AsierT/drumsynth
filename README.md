@@ -26,3 +26,7 @@ make
 ```bash
 make arm64
 ```
+
+
+## VST3 (Windows x86)
+- Guía de compilación en Windows 11: `vst3/README.md`.
