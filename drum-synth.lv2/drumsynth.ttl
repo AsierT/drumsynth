@@ -22,7 +22,8 @@
            [ a lv2:ControlPort, lv2:InputPort ; lv2:index 8 ; lv2:symbol "filt_release" ; lv2:name "Filter Release" ; lv2:default 0.5 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
            [ a lv2:ControlPort, lv2:InputPort ; lv2:index 9 ; lv2:symbol "resonance" ; lv2:name "Resonance" ; lv2:default 0.1 ; lv2:minimum 0 ; lv2:maximum 0.98 ] ,
            [ a lv2:ControlPort, lv2:InputPort ; lv2:index 10 ; lv2:symbol "drive" ; lv2:name "Drive" ; lv2:default 0.2 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
-           [ a atom:AtomPort, lv2:InputPort ; lv2:index 11 ; lv2:symbol "midi_in" ; lv2:name "MIDI In" ; atom:bufferType atom:Sequence ; atom:supports midi:MidiEvent ] .
+           [ a lv2:ControlPort, lv2:InputPort ; lv2:index 11 ; lv2:symbol "glide" ; lv2:name "Glide" ; lv2:default 0.0 ; lv2:minimum 0 ; lv2:maximum 1 ] ,
+           [ a atom:AtomPort, lv2:InputPort ; lv2:index 12 ; lv2:symbol "midi_in" ; lv2:name "MIDI In" ; atom:bufferType atom:Sequence ; atom:supports midi:MidiEvent ] .
 
 <https://example.org/plugins/drumsynth/snare> lv2:port <https://example.org/plugins/drumsynth/kick> .
 <https://example.org/plugins/drumsynth/hihat> lv2:port <https://example.org/plugins/drumsynth/kick> .

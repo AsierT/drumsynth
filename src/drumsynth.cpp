@@ -19,13 +19,15 @@ static const char* URIS[] = {
 
 enum PortIndex : uint32_t {
   OUT_L = 0, OUT_R, GATE, TONE, PITCH, AMP_DECAY, AMP_RELEASE,
-  FILT_DECAY, FILT_RELEASE, RESONANCE, DRIVE, MIDI_IN
+  FILT_DECAY, FILT_RELEASE, RESONANCE, DRIVE, GLIDE, MIDI_IN
 };
 
 struct Plugin {
   VoiceType type;
   float sr;
   float phase = 0.0f;
+  float freq = 55.0f;
+  float target_freq = 55.0f;
   float amp_env = 0.0f;
   float filt_env = 0.0f;
   float filt_state = 0.0f;
@@ -34,7 +36,7 @@ struct Plugin {
 
   float *out_l=nullptr,*out_r=nullptr;
   const float *gate=nullptr,*tone=nullptr,*pitch=nullptr,*amp_decay=nullptr,*amp_release=nullptr;
-  const float *filt_decay=nullptr,*filt_release=nullptr,*resonance=nullptr,*drive=nullptr;
+  const float *filt_decay=nullptr,*filt_release=nullptr,*resonance=nullptr,*drive=nullptr,*glide=nullptr;
   const LV2_Atom_Sequence* midi_in=nullptr;
 };
 
@@ -50,6 +52,10 @@ static void handle_midi(Plugin* p){
     const uint8_t* m = reinterpret_cast<const uint8_t*>(ev + 1);
     if(ev->body.size < 3) continue;
     if((m[0]&0xF0)==0x90 && m[2]>0){
+      if (p->type == SUB808) {
+        const float n = static_cast<float>(m[1]);
+        p->target_freq = 440.0f * std::pow(2.0f, (n - 69.0f) / 12.0f);
+      }
       trigger(p, m[2]/127.0f);
     }
   }
@@ -61,7 +67,7 @@ static float osc(Plugin* p){
   if(p->type==HIHAT) f0 = 3000.0f + t*7000.0f;
   if(p->type==SNARE) f0 = 150.0f + t*250.0f;
   if(p->type==CLAP) f0 = 900.0f + t*2500.0f;
-  if(p->type==SUB808) f0 = 28.0f + pi*70.0f;
+  if(p->type==SUB808) f0 = p->freq;
   p->phase += (2.0f*float(M_PI)*f0)/p->sr;
 
   switch(p->type){
@@ -88,6 +94,7 @@ static float filter(Plugin* p,float x){
 
 static LV2_Handle instantiate(const LV2_Descriptor* d,double rate,const char*,const LV2_Feature* const*){
   auto* p = new Plugin();
+  p->type = KICK;
   p->sr = float(rate);
   for(int i=0;i<6;i++) if(std::strcmp(d->URI,URIS[i])==0) p->type = VoiceType(i);
   return p;
@@ -101,7 +108,7 @@ static void connect_port(LV2_Handle instance,uint32_t port,void* data){
     case PITCH:p->pitch=(const float*)data;break; case AMP_DECAY:p->amp_decay=(const float*)data;break;
     case AMP_RELEASE:p->amp_release=(const float*)data;break; case FILT_DECAY:p->filt_decay=(const float*)data;break;
     case FILT_RELEASE:p->filt_release=(const float*)data;break; case RESONANCE:p->resonance=(const float*)data;break;
-    case DRIVE:p->drive=(const float*)data;break; case MIDI_IN:p->midi_in=(const LV2_Atom_Sequence*)data;break;
+    case DRIVE:p->drive=(const float*)data;break; case GLIDE:p->glide=(const float*)data;break; case MIDI_IN:p->midi_in=(const LV2_Atom_Sequence*)data;break;
   }
 }
 
@@ -117,8 +124,10 @@ static void run(LV2_Handle instance,uint32_t n){
   float fd=0.985f + (p->filt_decay?*p->filt_decay:0.5f)*0.014f;
   float fr=0.985f + (p->filt_release?*p->filt_release:0.5f)*0.014f;
   float drv=1.0f + (p->drive?*p->drive:0.2f)*8.0f;
+  float glide_amt = 0.0005f + (p->glide?*p->glide:0.0f)*0.02f;
 
   for(uint32_t i=0;i<n;i++){
+    if (p->type == SUB808) { p->freq += (p->target_freq - p->freq) * glide_amt; }
     float raw=osc(p);
     float shaped=filter(p,raw);
     float y=clip(shaped*drv)*p->amp_env;

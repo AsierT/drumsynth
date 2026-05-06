@@ -1,23 +1,19 @@
 # drumsynth
 
-Ahora el proyecto está separado en **6 plugins LV2 independientes**:
-- Kick
-- Snare
-- Hi-hat
-- Tom
-- Clap
-- Sub/808
+6 plugins LV2 independientes: Kick, Snare, Hi-hat, Tom, Clap, Sub/808.
 
-Cada plugin incluye parámetros de diseño:
-- Tone
-- Pitch
-- Amp Decay
-- Amp Release
-- Filter Decay
-- Filter Release
+## MIDI
+- **Sub/808**: se toca cromáticamente por nota MIDI y soporta **glide/slide** entre notas (`glide`).
+- **Kick/Snare/Hi-hat/Tom/Clap**: MIDI solo dispara el golpe (no cromático).
+
+## Parámetros
+- Tone, Pitch
+- Amp Decay / Amp Release
+- Filter Decay / Filter Release
 - Resonance
 - Drive
-- MIDI In + Gate
+- Glide (especialmente útil en Sub/808)
+- Gate + MIDI In
 
 ## Build
 ```bash
