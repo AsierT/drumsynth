@@ -19,7 +19,7 @@ static const char* URIS[] = {
 
 enum PortIndex : uint32_t {
   OUT_L = 0, OUT_R, GATE, TONE, PITCH, AMP_DECAY, AMP_RELEASE,
-  FILT_DECAY, FILT_RELEASE, RESONANCE, DRIVE, GLIDE, MIDI_IN
+  FILT_DECAY, FILT_RELEASE, RESONANCE, DRIVE, GLIDE, DIST_TYPE, DIST_MIX, MIDI_IN
 };
 
 struct Plugin {
@@ -36,7 +36,7 @@ struct Plugin {
 
   float *out_l=nullptr,*out_r=nullptr;
   const float *gate=nullptr,*tone=nullptr,*pitch=nullptr,*amp_decay=nullptr,*amp_release=nullptr;
-  const float *filt_decay=nullptr,*filt_release=nullptr,*resonance=nullptr,*drive=nullptr,*glide=nullptr;
+  const float *filt_decay=nullptr,*filt_release=nullptr,*resonance=nullptr,*drive=nullptr,*glide=nullptr,*dist_type=nullptr,*dist_mix=nullptr;
   const LV2_Atom_Sequence* midi_in=nullptr;
 };
 
@@ -92,6 +92,23 @@ static float filter(Plugin* p,float x){
   return p->filt_state;
 }
 
+
+static float distort_sub808(Plugin* p, float x) {
+  float mix = clamp(p->dist_mix ? *p->dist_mix : 0.0f, 0.0f, 1.0f);
+  float type = clamp(p->dist_type ? *p->dist_type : 0.0f, 0.0f, 2.999f);
+  int t = static_cast<int>(type);
+  float wet = x;
+  if (t == 0) {
+    wet = std::tanh(x * 3.2f);
+  } else if (t == 1) {
+    wet = clip(x * 6.0f);
+  } else {
+    float k = 20.0f;
+    wet = ((1.0f + k) * x) / (1.0f + k * std::fabs(x));
+  }
+  return x * (1.0f - mix) + wet * mix;
+}
+
 static LV2_Handle instantiate(const LV2_Descriptor* d,double rate,const char*,const LV2_Feature* const*){
   auto* p = new Plugin();
   p->type = KICK;
@@ -108,7 +125,7 @@ static void connect_port(LV2_Handle instance,uint32_t port,void* data){
     case PITCH:p->pitch=(const float*)data;break; case AMP_DECAY:p->amp_decay=(const float*)data;break;
     case AMP_RELEASE:p->amp_release=(const float*)data;break; case FILT_DECAY:p->filt_decay=(const float*)data;break;
     case FILT_RELEASE:p->filt_release=(const float*)data;break; case RESONANCE:p->resonance=(const float*)data;break;
-    case DRIVE:p->drive=(const float*)data;break; case GLIDE:p->glide=(const float*)data;break; case MIDI_IN:p->midi_in=(const LV2_Atom_Sequence*)data;break;
+    case DRIVE:p->drive=(const float*)data;break; case GLIDE:p->glide=(const float*)data;break; case DIST_TYPE:p->dist_type=(const float*)data;break; case DIST_MIX:p->dist_mix=(const float*)data;break; case MIDI_IN:p->midi_in=(const LV2_Atom_Sequence*)data;break;
   }
 }
 
@@ -131,6 +148,7 @@ static void run(LV2_Handle instance,uint32_t n){
     float raw=osc(p);
     float shaped=filter(p,raw);
     float y=clip(shaped*drv)*p->amp_env;
+    if (p->type == SUB808) y = distort_sub808(p, y);
     p->amp_env*= (p->amp_env>0.2f)?ad:ar;
     p->filt_env*= (p->filt_env>0.2f)?fd:fr;
     if(p->amp_env<0.0001f) p->amp_env=0.0f;
