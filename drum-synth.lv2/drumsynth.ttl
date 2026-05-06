@@ -4,7 +4,7 @@
 @prefix midi: <http://lv2plug.in/ns/ext/midi#> .
 
 <https://example.org/plugins/drumsynth/kick>
-  a lv2:Plugin ;
+  a lv2:Plugin, lv2:InstrumentPlugin ;
   doap:name "DrumSynth Kick" ;
   lv2:port
     [ a lv2:AudioPort, lv2:OutputPort ;
@@ -121,7 +121,7 @@
       atom:supports midi:MidiEvent ] .
 
 <https://example.org/plugins/drumsynth/snare>
-  a lv2:Plugin ;
+  a lv2:Plugin, lv2:InstrumentPlugin ;
   doap:name "DrumSynth Snare" ;
   lv2:port
     [ a lv2:AudioPort, lv2:OutputPort ;
@@ -238,7 +238,7 @@
       atom:supports midi:MidiEvent ] .
 
 <https://example.org/plugins/drumsynth/hihat>
-  a lv2:Plugin ;
+  a lv2:Plugin, lv2:InstrumentPlugin ;
   doap:name "DrumSynth HiHat" ;
   lv2:port
     [ a lv2:AudioPort, lv2:OutputPort ;
@@ -355,7 +355,7 @@
       atom:supports midi:MidiEvent ] .
 
 <https://example.org/plugins/drumsynth/tom>
-  a lv2:Plugin ;
+  a lv2:Plugin, lv2:InstrumentPlugin ;
   doap:name "DrumSynth Tom" ;
   lv2:port
     [ a lv2:AudioPort, lv2:OutputPort ;
@@ -472,7 +472,7 @@
       atom:supports midi:MidiEvent ] .
 
 <https://example.org/plugins/drumsynth/clap>
-  a lv2:Plugin ;
+  a lv2:Plugin, lv2:InstrumentPlugin ;
   doap:name "DrumSynth Clap" ;
   lv2:port
     [ a lv2:AudioPort, lv2:OutputPort ;
@@ -589,7 +589,7 @@
       atom:supports midi:MidiEvent ] .
 
 <https://example.org/plugins/drumsynth/sub808>
-  a lv2:Plugin ;
+  a lv2:Plugin, lv2:InstrumentPlugin ;
   doap:name "DrumSynth Sub808" ;
   lv2:port
     [ a lv2:AudioPort, lv2:OutputPort ;
