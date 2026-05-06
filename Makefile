@@ -1,5 +1,5 @@
 CXX ?= g++
-CXXFLAGS ?= -O3 -fPIC -std=c++17 -Wall -Wextra
+CXXFLAGS ?= -O3 -fPIC -std=c++17 -Wall -Wextra -Iinclude
 LDFLAGS ?= -shared
 LV2_CFLAGS := $(shell pkg-config --cflags lv2 2>/dev/null)
 LV2_LIBS := $(shell pkg-config --libs lv2 2>/dev/null)

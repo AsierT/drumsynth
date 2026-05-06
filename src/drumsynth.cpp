@@ -90,7 +90,7 @@ static float render_kick(DrumSynth* self) {
   const float sweep = 40.0f * v.env;
   const float freq = 35.0f + self->kick_tune[0] * 90.0f + sweep;
   v.phase += (2.0f * static_cast<float>(M_PI) * freq) / self->sample_rate;
-  const float body = std::sinf(v.phase);
+  const float body = std::sin(v.phase);
   const float click = (v.env > 0.8f) ? (v.env - 0.8f) * 2.5f : 0.0f;
   float out = (body + click) * v.env;
   v.env *= decay;
@@ -103,7 +103,7 @@ static float render_snare(DrumSynth* self) {
   if (!v.active) return 0.0f;
   const float tone = 120.0f + self->snare_tone[0] * 260.0f;
   v.phase += (2.0f * static_cast<float>(M_PI) * tone) / self->sample_rate;
-  const float shell = std::sinf(v.phase) * 0.35f;
+  const float shell = std::sin(v.phase) * 0.35f;
   const float noise = fast_rand(v) * 0.85f;
   const float out = (shell + noise) * v.env;
   v.env *= 0.995f;
@@ -130,7 +130,7 @@ static float render_tom(DrumSynth* self) {
   if (!v.active) return 0.0f;
   const float freq = 70.0f + self->tom_tune[0] * 220.0f + v.env * 18.0f;
   v.phase += (2.0f * static_cast<float>(M_PI) * freq) / self->sample_rate;
-  const float out = std::sinf(v.phase) * v.env;
+  const float out = std::sin(v.phase) * v.env;
   v.env *= 0.997f;
   if (v.env < 0.0003f) v.active = false;
   return out * 1.1f;
@@ -157,7 +157,7 @@ static float render_sub(DrumSynth* self) {
   if (!v.active) return 0.0f;
   const float base = 25.0f + self->sub_freq[0] * 85.0f;
   v.phase += (2.0f * static_cast<float>(M_PI) * base) / self->sample_rate;
-  const float raw = std::sinf(v.phase) * v.env;
+  const float raw = std::sin(v.phase) * v.env;
   const float drive = 1.0f + (self->sub_drive[0] * 9.0f);
   const float out = soft_clip(raw * drive);
   v.env *= 0.9994f;
