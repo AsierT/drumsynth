@@ -46,22 +46,5 @@ readelf -d s2400-lv2/drumsynth-kick.lv2/drumsynth_kick.so | grep NEEDED
 strings -a s2400-lv2/drumsynth-kick.lv2/drumsynth_kick.so | grep -E 'GLIBC_|GLIBCXX_|GCC_' | sort -V | uniq
 ```
 
-## Vibraphone
-There is also a duophonic vibraphone LV2. MIDI Note On triggers the played note
-plus one automatic harmony note calculated from Root, Scale, and Interval. It
-keeps only two notes active at a time and includes:
-
-- Harmony Level, Harmony Direction, Scale Snap
-- Tone, Mallet Hardness, Strike Noise, Bar Decay, Velocity Sens
-- Amp Attack / Decay / Sustain / Release
-- Tremolo Rate / Depth, Width, Gain
-- Spring Mix / Decay / Tone / Drive / Shake
-- Delay Mix / Time / Feedback, Tape Tone, Wow Flutter, Tape Age, Head Mode
-
-```bash
-make arm64-vibraphone-s2400
-```
-
-
 ## VST3 (Windows x86)
 - Guía de compilación en Windows 11: `vst3/README.md`.
