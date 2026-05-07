@@ -45,6 +45,3 @@ Check runtime dependencies:
 readelf -d s2400-lv2/drumsynth-kick.lv2/drumsynth_kick.so | grep NEEDED
 strings -a s2400-lv2/drumsynth-kick.lv2/drumsynth_kick.so | grep -E 'GLIBC_|GLIBCXX_|GCC_' | sort -V | uniq
 ```
-
-## VST3 (Windows x86)
-- Guía de compilación en Windows 11: `vst3/README.md`.
