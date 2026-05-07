@@ -5,22 +5,23 @@
 6 plugins LV2 independientes: Kick, Snare, Hi-hat, Tom, Clap, Sub/808.
 
 ## MIDI
-- **Sub/808**: se toca cromáticamente por nota MIDI y soporta **glide/slide** entre notas (`glide`).
+- **Sub/808**: se toca cromáticamente por nota MIDI y es el único instrumento con **glide/slide** entre notas (`glide`).
 - **Kick/Snare/Hi-hat/Tom/Clap**: MIDI solo dispara el golpe (no cromático).
 
 ## Parámetros
 - Pitch (-36 a +36 semitonos enteros)
+- Octave (-3 a +3 octavas enteras)
 - Tone
 - Amp Decay / Amp Release
 - Amp Attack
 - Filter Type, Cutoff, Resonance
-- Filter Env Amount
+- Filter Env Amount (-1 a +1)
 - Filter Attack / Filter Decay / Filter Release
 - Drive
-- Glide (especialmente útil en Sub/808)
+- Glide (solo Sub/808)
 - Dist Type: 0=clean, 1=soft, 2=clip, 3=drive, 4=asym, 5=fold
 - Dist Amount
-- Gate + MIDI In
+- MIDI In
 
 ## Build
 ```bash

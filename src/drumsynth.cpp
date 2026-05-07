@@ -18,15 +18,25 @@ static const char* URIS[] = {
     "https://github.com/AsierT/drumsynth#sub808",
 };
 
+#if defined(DRUMSYNTH_SINGLE_INDEX) && DRUMSYNTH_SINGLE_INDEX != 5
+#define DRUMSYNTH_HAS_GLIDE_PORT 0
+#else
+#define DRUMSYNTH_HAS_GLIDE_PORT 1
+#endif
+
 enum PortIndex : uint32_t {
 #ifdef DRUMSYNTH_INSERT_PORTS
-  IN_L = 0, IN_R, OUT_L, OUT_R, PITCH, TONE, AMP_ATTACK, AMP_DECAY, AMP_RELEASE,
+  IN_L = 0, IN_R, OUT_L, OUT_R, PITCH, OCTAVE, TONE, AMP_ATTACK, AMP_DECAY, AMP_RELEASE,
   FILTER_TYPE, CUTOFF, RESONANCE, DRIVE, FILT_ENV_AMT, FILT_ATTACK, FILT_DECAY,
-  FILT_RELEASE, DIST_TYPE, DIST_MIX, GLIDE, GATE, MIDI_IN
+  FILT_RELEASE, DIST_TYPE, DIST_MIX,
+#if DRUMSYNTH_HAS_GLIDE_PORT
+  GLIDE,
+#endif
+  MIDI_IN
 #else
-  OUT_L = 0, OUT_R, PITCH, TONE, AMP_ATTACK, AMP_DECAY, AMP_RELEASE,
+  OUT_L = 0, OUT_R, PITCH, OCTAVE, TONE, AMP_ATTACK, AMP_DECAY, AMP_RELEASE,
   FILTER_TYPE, CUTOFF, RESONANCE, DRIVE, FILT_ENV_AMT, FILT_ATTACK, FILT_DECAY,
-  FILT_RELEASE, DIST_TYPE, DIST_MIX, GLIDE, GATE, MIDI_IN
+  FILT_RELEASE, DIST_TYPE, DIST_MIX, GLIDE, MIDI_IN
 #endif
 };
 
@@ -43,14 +53,14 @@ struct Plugin {
   float filt_lp;
   float filt_bp;
   float age;
-  float prev_gate;
+  float declick;
   uint32_t noise;
   uint8_t amp_attacking;
   uint8_t filt_attacking;
 
   const float *in_l, *in_r;
   float *out_l, *out_r;
-  const float *gate, *tone, *pitch, *amp_attack, *amp_decay, *amp_release;
+  const float *tone, *pitch, *octave, *amp_attack, *amp_decay, *amp_release;
   const float *filt_attack, *filt_decay, *filt_release, *cutoff, *filt_env_amt, *filter_type;
   const float *resonance, *drive, *glide, *dist_type, *dist_mix;
   const LV2_Atom_Sequence* midi_in;
@@ -85,11 +95,6 @@ static float sample_rate(const Plugin* p) {
   return (p && finite_float(p->sr) && p->sr >= 1000.0f && p->sr <= 384000.0f) ? p->sr : kRefSampleRate;
 }
 
-static float ref_coef_to_sr(float ref_coef, const Plugin* p) {
-  ref_coef = clamp(ref_coef, 0.0f, 0.999999f);
-  return finite_or(powf(ref_coef, kRefSampleRate / sample_rate(p)), 0.0f);
-}
-
 static int control_int(const float* value, int fallback, int lo, int hi) {
   const float v = control_value(value, static_cast<float>(fallback), static_cast<float>(lo), static_cast<float>(hi));
   int i = static_cast<int>(v >= 0.0f ? v + 0.5f : v - 0.5f);
@@ -100,6 +105,18 @@ static int control_int(const float* value, int fallback, int lo, int hi) {
 
 static float semitone_ratio(float semitones) {
   return finite_or(powf(2.0f, semitones / 12.0f), 1.0f);
+}
+
+static float log_hz_from_normalized(float value) {
+  value = clamp(value, 0.0f, 1.0f);
+  if (value <= 0.000001f) return 0.0f;
+  return finite_or(20.0f * powf(1000.0f, value), 20000.0f);
+}
+
+static float normalized_from_hz(float hz) {
+  hz = clamp(hz, 0.0f, 20000.0f);
+  if (hz <= 20.0f) return hz <= 0.000001f ? 0.0f : 0.000001f;
+  return clamp(logf(hz / 20.0f) / logf(1000.0f), 0.0f, 1.0f);
 }
 
 static float time_coef_ms(const Plugin* p, float ms) {
@@ -142,7 +159,7 @@ static void reset_state(Plugin* p) {
   p->filt_lp = 0.0f;
   p->filt_bp = 0.0f;
   p->age = 0.0f;
-  p->prev_gate = 0.0f;
+  p->declick = 1.0f;
   p->noise = 0x1234ABCD;
   p->amp_attacking = 0;
   p->filt_attacking = 0;
@@ -155,9 +172,9 @@ static void init_plugin(Plugin* p, VoiceType type, float sr) {
   p->in_r = nullptr;
   p->out_l = nullptr;
   p->out_r = nullptr;
-  p->gate = nullptr;
   p->tone = nullptr;
   p->pitch = nullptr;
+  p->octave = nullptr;
   p->amp_attack = nullptr;
   p->amp_decay = nullptr;
   p->amp_release = nullptr;
@@ -180,8 +197,7 @@ static void trigger(Plugin* p, float vel = 1.0f) {
   vel = clamp(vel, 0.0f, 1.0f);
   p->phase = 0.0f;
   p->age = 0.0f;
-  p->amp_env = 0.0f;
-  p->filt_env = 0.0f;
+  p->declick = 0.0f;
   p->amp_target = vel;
   p->filt_target = vel;
   p->amp_attacking = 1;
@@ -200,6 +216,10 @@ static void handle_midi(Plugin* p) {
         const float n = static_cast<float>(m[1]);
         const float max_freq = sample_rate(p) * 0.45f;
         p->target_freq = clamp(440.0f * powf(2.0f, (n - 69.0f) / 12.0f), 8.0f, max_freq);
+        const float glide = control_value(p->glide, 0.0f, 0.0f, 1.0f);
+        if (glide <= 0.0001f || p->amp_env <= 0.0001f) {
+          p->freq = p->target_freq;
+        }
       }
       trigger(p, clamp(m[2] / 127.0f, 0.0f, 1.0f));
     }
@@ -210,15 +230,14 @@ static float osc(Plugin* p) {
   const float sr = sample_rate(p);
   const float t = control_value(p->tone, 0.5f, 0.0f, 1.0f);
   const int pitch = control_int(p->pitch, 0, -36, 36);
-  const float pitch_ratio = semitone_ratio(static_cast<float>(pitch));
-  const float glide = control_value(p->glide, 0.0f, 0.0f, 1.0f);
-  const float sweep = p->amp_env * glide;
+  const int octave = control_int(p->octave, 0, -3, 3);
+  const float pitch_ratio = semitone_ratio(static_cast<float>(pitch + octave * 12));
   float f0 = 55.0f * pitch_ratio;
 
-  if (p->type == KICK) f0 = 55.0f * pitch_ratio * (1.0f + sweep * 3.0f);
-  if (p->type == SNARE) f0 = 220.0f * pitch_ratio * (1.0f + sweep * 1.2f);
-  if (p->type == HIHAT) f0 = 2200.0f * pitch_ratio * (1.0f + t * 7.0f + sweep * 0.45f);
-  if (p->type == TOM) f0 = 110.0f * pitch_ratio * (1.0f + sweep * 1.7f);
+  if (p->type == KICK) f0 = 55.0f * pitch_ratio;
+  if (p->type == SNARE) f0 = 220.0f * pitch_ratio;
+  if (p->type == HIHAT) f0 = 2200.0f * pitch_ratio * (1.0f + t * 7.0f);
+  if (p->type == TOM) f0 = 110.0f * pitch_ratio;
   if (p->type == CLAP) f0 = 1200.0f * pitch_ratio * (0.5f + t * 1.7f);
   if (p->type == SUB808) f0 = p->freq * pitch_ratio;
 
@@ -265,11 +284,11 @@ static float filter(Plugin* p, float x) {
   if (!finite_float(p->filt_lp)) p->filt_lp = 0.0f;
   if (!finite_float(p->filt_bp)) p->filt_bp = 0.0f;
 
-  const float cutoff_ctl = control_value(p->cutoff, 12000.0f, 0.0f, 20000.0f);
-  const float env_amt = control_value(p->filt_env_amt, 4000.0f, 0.0f, 20000.0f);
+  const float cutoff_ctl = control_value(p->cutoff, 20000.0f, 0.0f, 20000.0f);
+  const float env_amt = control_value(p->filt_env_amt, 0.0f, -1.0f, 1.0f);
   const int filter_type = control_int(p->filter_type, 0, 0, 2);
-  const float res = control_value(p->resonance, 0.1f, 0.0f, 0.98f);
-  float cutoff = cutoff_ctl + p->filt_env * env_amt;
+  const float res = control_value(p->resonance, 0.0f, 0.0f, 0.98f);
+  float cutoff = log_hz_from_normalized(normalized_from_hz(cutoff_ctl) + p->filt_env * env_amt);
   cutoff = clamp(cutoff, 0.0f, 20000.0f);
   cutoff = clamp(cutoff, 0.0f, sr * 0.45f);
 
@@ -292,7 +311,7 @@ static float filter(Plugin* p, float x) {
 
 static float distort_signal(Plugin* p, float x) {
   x = finite_or(x, 0.0f);
-  const float mix = control_value(p->dist_mix, 0.35f, 0.0f, 1.0f);
+  const float mix = control_value(p->dist_mix, 0.0f, 0.0f, 1.0f);
   const int t = control_int(p->dist_type, 0, 0, 5);
   float wet = x;
 
@@ -372,9 +391,9 @@ static void connect_port(LV2_Handle instance, uint32_t port, void* data) {
 #endif
     case OUT_L: p->out_l = static_cast<float*>(data); break;
     case OUT_R: p->out_r = static_cast<float*>(data); break;
-    case GATE: p->gate = static_cast<const float*>(data); break;
     case TONE: p->tone = static_cast<const float*>(data); break;
     case PITCH: p->pitch = static_cast<const float*>(data); break;
+    case OCTAVE: p->octave = static_cast<const float*>(data); break;
     case AMP_ATTACK: p->amp_attack = static_cast<const float*>(data); break;
     case AMP_DECAY: p->amp_decay = static_cast<const float*>(data); break;
     case AMP_RELEASE: p->amp_release = static_cast<const float*>(data); break;
@@ -386,7 +405,9 @@ static void connect_port(LV2_Handle instance, uint32_t port, void* data) {
     case FILTER_TYPE: p->filter_type = static_cast<const float*>(data); break;
     case RESONANCE: p->resonance = static_cast<const float*>(data); break;
     case DRIVE: p->drive = static_cast<const float*>(data); break;
+#if DRUMSYNTH_HAS_GLIDE_PORT
     case GLIDE: p->glide = static_cast<const float*>(data); break;
+#endif
     case DIST_TYPE: p->dist_type = static_cast<const float*>(data); break;
     case DIST_MIX: p->dist_mix = static_cast<const float*>(data); break;
     case MIDI_IN: p->midi_in = static_cast<const LV2_Atom_Sequence*>(data); break;
@@ -404,29 +425,28 @@ static void run(LV2_Handle instance, uint32_t n) {
   }
 
   handle_midi(p);
-  const float g = control_value(p->gate, 0.0f, 0.0f, 1.0f);
-  if (g > 0.001f && (p->prev_gate <= 0.001f || g > p->prev_gate + 0.02f || (g > 0.5f && p->prev_gate <= 0.5f))) {
-    trigger(p, g);
-  }
-  p->prev_gate = g;
 
   const float amp_attack = control_value(p->amp_attack, 0.0f, 0.0f, 1.0f);
-  const float amp_decay = control_value(p->amp_decay, 0.5f, 0.0f, 1.0f);
-  const float amp_release = control_value(p->amp_release, 0.5f, 0.0f, 1.0f);
+  const float amp_decay = control_value(p->amp_decay, 0.0f, 0.0f, 1.0f);
+  const float amp_release = control_value(p->amp_release, 0.0f, 0.0f, 1.0f);
   const float filt_attack = control_value(p->filt_attack, 0.0f, 0.0f, 1.0f);
-  const float filt_decay = control_value(p->filt_decay, 0.5f, 0.0f, 1.0f);
-  const float filt_release = control_value(p->filt_release, 0.5f, 0.0f, 1.0f);
+  const float filt_decay = control_value(p->filt_decay, 0.0f, 0.0f, 1.0f);
+  const float filt_release = control_value(p->filt_release, 0.0f, 0.0f, 1.0f);
   const float aa = time_coef_ms(p, 0.02f + amp_attack * amp_attack * 250.0f);
   const float ad = time_coef_ms(p, 3.0f + amp_decay * amp_decay * 450.0f);
   const float ar = time_coef_ms(p, 3.0f + amp_release * amp_release * 700.0f);
   const float fa = time_coef_ms(p, 0.02f + filt_attack * filt_attack * 250.0f);
   const float fd = time_coef_ms(p, 4.0f + filt_decay * filt_decay * 500.0f);
   const float fr = time_coef_ms(p, 4.0f + filt_release * filt_release * 900.0f);
-  const float drv = 1.0f + control_value(p->drive, 0.2f, 0.0f, 1.0f) * 8.0f;
-  const float glide_ref = 0.0005f + control_value(p->glide, 0.0f, 0.0f, 1.0f) * 0.02f;
-  const float glide_amt = 1.0f - ref_coef_to_sr(1.0f - glide_ref, p);
+  const float drv = 1.0f + control_value(p->drive, 0.0f, 0.0f, 1.0f) * 8.0f;
+  const float glide = (p->type == SUB808) ? control_value(p->glide, 0.0f, 0.0f, 1.0f) : 0.0f;
+  const float glide_ms = 3.0f + glide * glide * 1800.0f;
+  const float glide_amt = (glide <= 0.0001f) ? 1.0f : (1.0f - time_coef_ms(p, glide_ms));
+  const float sr = sample_rate(p);
+  const float declick_step = 1.0f / (sr * 0.0015f);
   p->amp_env = clamp(p->amp_env, 0.0f, 1.0f);
   p->filt_env = clamp(p->filt_env, 0.0f, 1.0f);
+  p->declick = clamp(p->declick, 0.0f, 1.0f);
 
   for (uint32_t i = 0; i < n; ++i) {
     if (p->type == SUB808) {
@@ -442,6 +462,8 @@ static void run(LV2_Handle instance, uint32_t n) {
     const float shaped = filter(p, raw);
     float y = clip(shaped * drv) * p->amp_env;
     y = distort_signal(p, y);
+    p->declick = clamp(p->declick + declick_step, 0.0f, 1.0f);
+    y *= p->declick;
     y = limit_output(y);
 
 #ifdef DRUMSYNTH_INSERT_PORTS
@@ -453,7 +475,7 @@ static void run(LV2_Handle instance, uint32_t n) {
     p->out_l[i] = y;
     p->out_r[i] = y;
 #endif
-    p->age += 1.0f / sample_rate(p);
+    p->age += 1.0f / sr;
     if (!finite_float(p->age) || p->age > 10.0f) p->age = 10.0f;
   }
 }

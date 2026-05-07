@@ -10,6 +10,7 @@ SRC := src/drumsynth.cpp
 
 S2400_DIR := s2400-lv2
 S2400_TEMPLATE := templates/s2400-plugin.ttl.in
+S2400_SUB_TEMPLATE := templates/s2400-sub808.ttl.in
 VOICE_SLUGS := kick snare hihat tom clap sub808
 VOICE_NAMES := Kick Snare HiHat Tom Clap Sub808
 BASE_URI := https://github.com/AsierT/drumsynth
@@ -19,7 +20,7 @@ all: s2400
 arm64:
 	$(MAKE) CXX=aarch64-linux-gnu-g++ CC=aarch64-linux-gnu-gcc CXXFLAGS="$(CXXFLAGS) -march=armv8-a" s2400
 
-s2400: $(SRC) $(S2400_TEMPLATE)
+s2400: $(SRC) $(S2400_TEMPLATE) $(S2400_SUB_TEMPLATE)
 	mkdir -p $(S2400_DIR)
 	set -- $(VOICE_NAMES); \
 	i=0; \
@@ -30,10 +31,12 @@ s2400: $(SRC) $(S2400_TEMPLATE)
 		binary="drumsynth_$$slug.so"; \
 		ttl="drumsynth_$$slug.ttl"; \
 		obj="$$bundle/drumsynth_$$slug.o"; \
+		template="$(S2400_TEMPLATE)"; \
+		if [ "$$slug" = "sub808" ]; then template="$(S2400_SUB_TEMPLATE)"; fi; \
 		mkdir -p "$$bundle"; \
 		$(CXX) $(CXXFLAGS) $(LV2_CFLAGS) -DDRUMSYNTH_INSERT_PORTS -DDRUMSYNTH_SINGLE_INDEX=$$i -c $(SRC) -o "$$obj"; \
 		$(CC) "$$obj" -o "$$bundle/$$binary" $(LDFLAGS) $(LV2_LIBS) $(LDLIBS); \
-		sed -e "s|@URI@|$$uri|g" -e "s|@NAME@|$$name|g" -e "s|@BINARY@|$$binary|g" "$(S2400_TEMPLATE)" > "$$bundle/$$ttl"; \
+		sed -e "s|@URI@|$$uri|g" -e "s|@NAME@|$$name|g" -e "s|@BINARY@|$$binary|g" "$$template" > "$$bundle/$$ttl"; \
 		printf '@prefix lv2:  <http://lv2plug.in/ns/lv2core#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n\n<%s>\n    a lv2:Plugin ;\n    lv2:binary <%s> ;\n    rdfs:seeAlso <%s> .\n' "$$uri" "$$binary" "$$ttl" > "$$bundle/manifest.ttl"; \
 		rm -f "$$obj"; \
 		i=$$((i + 1)); \

@@ -38,8 +38,9 @@
     [ a lv2:InputPort, lv2:ControlPort ; lv2:index 18 ; lv2:symbol "dist_type" ; lv2:name "Dist Type" ; lv2:portProperty lv2:integer, lv2:enumeration ; lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 5 ;
       lv2:scalePoint [ rdfs:label "Clean" ; rdf:value 0 ] , [ rdfs:label "Soft" ; rdf:value 1 ] , [ rdfs:label "Clip" ; rdf:value 2 ] , [ rdfs:label "Drive" ; rdf:value 3 ] , [ rdfs:label "Asym" ; rdf:value 4 ] , [ rdfs:label "Fold" ; rdf:value 5 ] ] ,
     [ a lv2:InputPort, lv2:ControlPort ; lv2:index 19 ; lv2:symbol "dist_mix" ; lv2:name "Dist Amount" ; lv2:default 0.000000 ; lv2:minimum 0.000000 ; lv2:maximum 1.000000 ] ,
+    [ a lv2:InputPort, lv2:ControlPort ; lv2:index 20 ; lv2:symbol "glide" ; lv2:name "Glide" ; lv2:default 0.000000 ; lv2:minimum 0.000000 ; lv2:maximum 1.000000 ] ,
 
-    [ a atom:AtomPort, lv2:InputPort ; lv2:index 20 ; lv2:symbol "midi_in" ; lv2:name "MIDI In" ; lv2:designation lv2:control ; atom:bufferType atom:Sequence ; atom:supports midi:MidiEvent ] ;
+    [ a atom:AtomPort, lv2:InputPort ; lv2:index 21 ; lv2:symbol "midi_in" ; lv2:name "MIDI In" ; lv2:designation lv2:control ; atom:bufferType atom:Sequence ; atom:supports midi:MidiEvent ] ;
 
     rdfs:comment "DrumSynth @NAME@ S2400 insert-compatible LV2." ;
     mod:brand "DrumSynth" ;
