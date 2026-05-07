@@ -107,18 +107,6 @@ static float semitone_ratio(float semitones) {
   return finite_or(powf(2.0f, semitones / 12.0f), 1.0f);
 }
 
-static float log_hz_from_normalized(float value) {
-  value = clamp(value, 0.0f, 1.0f);
-  if (value <= 0.000001f) return 0.0f;
-  return finite_or(20.0f * powf(1000.0f, value), 20000.0f);
-}
-
-static float normalized_from_hz(float hz) {
-  hz = clamp(hz, 0.0f, 20000.0f);
-  if (hz <= 20.0f) return hz <= 0.000001f ? 0.0f : 0.000001f;
-  return clamp(logf(hz / 20.0f) / logf(1000.0f), 0.0f, 1.0f);
-}
-
 static float time_coef_ms(const Plugin* p, float ms) {
   const float sr = sample_rate(p);
   ms = clamp(ms, 0.1f, 5000.0f);
@@ -288,7 +276,7 @@ static float filter(Plugin* p, float x) {
   const float env_amt = control_value(p->filt_env_amt, 0.0f, -1.0f, 1.0f);
   const int filter_type = control_int(p->filter_type, 0, 0, 2);
   const float res = control_value(p->resonance, 0.0f, 0.0f, 0.98f);
-  float cutoff = log_hz_from_normalized(normalized_from_hz(cutoff_ctl) + p->filt_env * env_amt);
+  float cutoff = cutoff_ctl + p->filt_env * env_amt * 20000.0f;
   cutoff = clamp(cutoff, 0.0f, 20000.0f);
   cutoff = clamp(cutoff, 0.0f, sr * 0.45f);
 
