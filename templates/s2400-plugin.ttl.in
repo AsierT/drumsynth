@@ -241,7 +241,7 @@
     mod:label "DrumSynth @NAME@" ;
 
     doap:name "DrumSynth @NAME@" ;
-    doap:license "ISC" ;
+    doap:license "GPL-2.0-only" ;
 
-    lv2:microVersion 3 ;
+    lv2:microVersion 4 ;
     lv2:minorVersion 0 .

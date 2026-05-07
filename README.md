@@ -22,12 +22,12 @@
 
 ## Build
 ```bash
-make
+make s2400
 ```
 
 ## ARM64
 ```bash
-make arm64
+make arm64-s2400
 ```
 
 ## S2400 / insert-compatible ARM64
@@ -45,3 +45,6 @@ Check runtime dependencies:
 readelf -d s2400-lv2/drumsynth-kick.lv2/drumsynth_kick.so | grep NEEDED
 strings -a s2400-lv2/drumsynth-kick.lv2/drumsynth_kick.so | grep -E 'GLIBC_|GLIBCXX_|GCC_' | sort -V | uniq
 ```
+
+## License
+GPL-2.0-only.

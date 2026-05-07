@@ -6,10 +6,6 @@ LDLIBS ?= -lm
 LV2_CFLAGS := $(shell pkg-config --cflags lv2 2>/dev/null)
 LV2_LIBS := $(shell pkg-config --libs lv2 2>/dev/null)
 
-PLUGIN_BUNDLE := drum-synth.lv2
-PLUGIN_SO := $(PLUGIN_BUNDLE)/drumsynth.so
-BUILD_DIR := build
-OBJ := $(BUILD_DIR)/drumsynth.o
 SRC := src/drumsynth.cpp
 
 S2400_DIR := s2400-lv2
@@ -18,19 +14,10 @@ VOICE_SLUGS := kick snare hihat tom clap sub808
 VOICE_NAMES := Kick Snare HiHat Tom Clap Sub808
 BASE_URI := https://github.com/AsierT/drumsynth
 
-all: $(PLUGIN_SO)
-
-$(BUILD_DIR):
-	mkdir -p $@
-
-$(OBJ): $(SRC) | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $(LV2_CFLAGS) -c $< -o $@
-
-$(PLUGIN_SO): $(OBJ)
-	$(CC) $< -o $@ $(LDFLAGS) $(LV2_LIBS) $(LDLIBS)
+all: s2400
 
 arm64:
-	$(MAKE) CXX=aarch64-linux-gnu-g++ CC=aarch64-linux-gnu-gcc CXXFLAGS="$(CXXFLAGS) -march=armv8-a" all
+	$(MAKE) CXX=aarch64-linux-gnu-g++ CC=aarch64-linux-gnu-gcc CXXFLAGS="$(CXXFLAGS) -march=armv8-a" s2400
 
 s2400: $(SRC) $(S2400_TEMPLATE)
 	mkdir -p $(S2400_DIR)
@@ -56,15 +43,19 @@ arm64-s2400:
 	$(MAKE) CXX=aarch64-linux-gnu-g++ CC=aarch64-linux-gnu-gcc CXXFLAGS="$(CXXFLAGS) -march=armv8-a" s2400
 
 check-abi:
-	file $(PLUGIN_SO)
-	readelf -d $(PLUGIN_SO) | grep NEEDED || true
-	strings -a $(PLUGIN_SO) | grep -E 'GLIBC_|GLIBCXX_|GCC_' | sort -V | uniq || true
+	for so in $(S2400_DIR)/*.lv2/*.so; do \
+		[ -e "$$so" ] || { echo "No S2400 binaries found. Run make arm64-s2400 first."; exit 1; }; \
+		echo "=== $$so"; \
+		file "$$so"; \
+		readelf -d "$$so" | grep NEEDED || true; \
+		strings -a "$$so" | grep -E 'GLIBC_|GLIBCXX_|GCC_' | sort -V | uniq || true; \
+	done
 
-install: all
-	mkdir -p $(HOME)/.lv2/$(PLUGIN_BUNDLE)
-	cp -a $(PLUGIN_BUNDLE)/* $(HOME)/.lv2/$(PLUGIN_BUNDLE)/
+install: s2400
+	mkdir -p $(HOME)/.lv2
+	cp -a $(S2400_DIR)/*.lv2 $(HOME)/.lv2/
 
 clean:
-	rm -rf $(BUILD_DIR) $(PLUGIN_SO) $(S2400_DIR)
+	rm -rf $(S2400_DIR)
 
 .PHONY: all arm64 s2400 arm64-s2400 check-abi install clean
