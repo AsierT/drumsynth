@@ -1,3 +1,5 @@
+> **WIP:** Proyecto en desarrollo. La API, el sonido, la metadata LV2 y los targets de build pueden cambiar.
+
 # drumsynth
 
 6 plugins LV2 independientes: Kick, Snare, Hi-hat, Tom, Clap, Sub/808.
